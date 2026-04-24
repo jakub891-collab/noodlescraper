@@ -107,19 +107,33 @@ class NoodleScraper:
 
         video_tags = [tag.strip() for content in video_tree.css('meta[property="video:tag"]') for tag in content.attributes.get('content', '').split(',')]
 
-        download_html = self.fetch(download_url)
-        if not download_html:
-            return None
+        og_image_tag = video_tree.css_first('meta[property="og:image"]')
+        image = og_image_tag.attributes.get('content') if og_image_tag else None
 
-        playlist_data = self.parse_playlist(download_html, base_url, download_url)
+        # Extract video ID from URL
+        video_id = urlparse(video_url).path.split('/')[-1].split('?')[0]
+
+        # Try to get playlist data, but don't fail if not available
+        playlist_data = None
+        download_html = self.fetch(download_url)
+        if download_html:
+            playlist_data = self.parse_playlist(download_html, base_url, download_url)
+
+        # Basic video data
+        video_data = {
+            'id': video_id,
+            'title': title,
+            'tags': video_tags,
+            'player_url': og_video,
+            'image': image,
+            'source_order': index
+        }
+
+        # Add playlist data if available
         if playlist_data:
-            playlist_data.update({
-                "title": title,
-                "tags": video_tags,
-                'player_url': og_video,
-                'source_order': index
-            })
-        return playlist_data
+            video_data.update(playlist_data)
+
+        return video_data
 
     async def search_videos(self, query, page=0):
         """Search for videos by query with preserved ordering
@@ -183,11 +197,26 @@ class NoodleScraper:
 
         video_tags = [tag.strip() for content in video_tree.css('meta[property="video:tag"]') for tag in content.attributes.get('content', '').split(',')]
 
-        download_html = self.fetch(download_url)
-        if not download_html:
-            return None
+        og_image_tag = video_tree.css_first('meta[property="og:image"]')
+        image = og_image_tag.attributes.get('content') if og_image_tag else None
 
-        playlist_data = self.parse_playlist(download_html, self.base_url, download_url)
+        # Try to get playlist data, but don't fail if not available
+        playlist_data = None
+        download_html = self.fetch(download_url)
+        if download_html:
+            playlist_data = self.parse_playlist(download_html, self.base_url, download_url)
+
+        # Basic video data
+        video_data = {
+            'id': video_id,
+            'title': title,
+            'tags': video_tags,
+            'player_url': og_video,
+            'image': image
+        }
+
+        # Add playlist data if available
         if playlist_data:
-            playlist_data.update({"title": title, "tags": video_tags, 'player_url': og_video})
-        return playlist_data
+            video_data.update(playlist_data)
+
+        return video_data
